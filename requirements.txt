@@ -1,0 +1,4 @@
+crewai
+langchain_anthropic
+streamlit
+crewai_tools
