@@ -77,7 +77,7 @@ def run_crew(anthropic_key, serper_key):
     )
 
     task_write = Task(
-        description=f"Write a LinkedIn post in {language} based on the research. Keep it under 200 words.",
+        description=f"Write a LinkedIn post in {language} based on the research. Keep it under 200 words. Include emojis.",
         expected_output=f"A full LinkedIn post in {language}.",
         agent=writer,
         context=[task_research]
@@ -85,12 +85,19 @@ def run_crew(anthropic_key, serper_key):
 
     task_prompt = Task(
         description="""
-        1. Read the post created by the writer task (task_write).
-        2. YOUR OUTPUT MUST START with the content of that post (in Hebrew/English as written).
-        3. Then add a separator line (---).
-        4. Then write the Image Prompt in English.
+        CRITICAL INSTRUCTION:
+        1. FIRST, COPY the entire LinkedIn post created by the 'Content Creator' exactly as it is (in Hebrew/English). Do not summarize it. Copy full text.
+        2. THEN, print a separator line like this: "----------------------------------------"
+        3. BELOW the line, write a detailed Image Prompt in English for that post.
+        
+        Structure:
+        [Full Hebrew Post]
+        
+        ----------------------------------------
+        
+        [Image Prompt in English]
         """,
-        expected_output="The original LinkedIn Post followed by the Image Prompt.",
+        expected_output="The full original post, followed by a separator and the image prompt.",
         agent=art_director,
         context=[task_write]
     )
