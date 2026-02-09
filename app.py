@@ -12,16 +12,13 @@ st.title("🎨 מחולל פוסטים + פרומפטים")
 st.markdown("המערכת יוצרת פוסט ללינקדאין וגם מכינה לך פרומפט לתמונה (השתמש במפתחות מהכספת או הזן ידנית)")
 
 # ====================================================
-# פונקציה חכמה לטעינת מפתחות (מהכספת או מהמשתמש)
+# פונקציה חכמה לטעינת מפתחות
 # ====================================================
 def load_api_key(key_name, user_input):
-    # 1. אם המשתמש הזין ידנית - קח את זה
     if user_input and len(user_input) > 10:
         return user_input
-    # 2. אחרת, נסה למשוך מהכספת הסודית
     elif key_name in st.secrets:
         return st.secrets[key_name]
-    # 3. אם אין כלום - תחזיר כלום
     return None
 
 # ====================================================
@@ -29,8 +26,6 @@ def load_api_key(key_name, user_input):
 # ====================================================
 with st.sidebar:
     st.header("הגדרות")
-    
-    # שדות קלט (משאירים ריק כדי להשתמש בכספת)
     user_anthropic = st.text_input("Anthropic API Key", type="password", help="השאר ריק כדי להשתמש במפתח השמור במערכת")
     user_serper = st.text_input("Serper API Key", type="password", help="השאר ריק כדי להשתמש במפתח השמור במערכת")
     
@@ -42,14 +37,10 @@ with st.sidebar:
 # המנוע
 # ====================================================
 def run_crew(anthropic_key, serper_key):
-    # הזנת המפתחות למערכת ההפעלה
     os.environ["ANTHROPIC_API_KEY"] = anthropic_key
     os.environ["SERPER_API_KEY"] = serper_key
 
-    # הגדרת המודל
     llm = ChatAnthropic(model="claude-3-haiku-20240307", temperature=0.7)
-    
-    # כלים
     search_tool = SerperDevTool()
 
     # סוכנים
@@ -92,17 +83,17 @@ def run_crew(anthropic_key, serper_key):
         context=[task_research]
     )
 
+    # התיקון נמצא כאן: הנחיה מפורשת להעתיק את הפוסט המקורי
     task_prompt = Task(
         description="""
-        1. קרא את הפוסט שהכין הכותב (task_write).
-        2. העתק את הפוסט המקורי (בעברית) כמו שהוא להודעה הסופית.
-        3. רד שורה והוסף קו מפריד (---).
-        4. כתוב מתחתיו את ה-Image Prompt באנגלית.
+        1. Read the post created by the writer task (task_write).
+        2. YOUR OUTPUT MUST START with the content of that post (in Hebrew/English as written).
+        3. Then add a separator line (---).
+        4. Then write the Image Prompt in English.
         """,
-        expected_output="הפוסט המלא בעברית, ואחריו ה-Image Prompt באנגלית.",
+        expected_output="The original LinkedIn Post followed by the Image Prompt.",
         agent=art_director,
         context=[task_write]
-    )
     )
 
     crew = Crew(
@@ -117,19 +108,4 @@ def run_crew(anthropic_key, serper_key):
 # כפתור ההפעלה
 # ====================================================
 if st.button("🚀 צור פוסט + פרומפט"):
-    # 1. ניסיון לטעון מפתחות
-    final_anthropic = load_api_key("ANTHROPIC_API_KEY", user_anthropic)
-    final_serper = load_api_key("SERPER_API_KEY", user_serper)
-
-    # 2. בדיקה שיש לנו הכל
-    if not final_anthropic or not final_serper:
-        st.error("⚠️ לא נמצאו מפתחות! נא להזין בסרגל הצד או להגדיר ב-Secrets.")
-    else:
-        with st.spinner('הצוות עובד... (זה לוקח דקה)'):
-            try:
-                result = run_crew(final_anthropic, final_serper)
-                st.success("התהליך הסתיים!")
-                st.markdown("### 📝 תוצאה:")
-                st.markdown(result)
-            except Exception as e:
-                st.error(f"שגיאה: {e}")
+    final_anthropic = load_api_key("ANTHROPIC_API_KEY
