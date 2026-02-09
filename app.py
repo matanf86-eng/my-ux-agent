@@ -93,10 +93,16 @@ def run_crew(anthropic_key, serper_key):
     )
 
     task_prompt = Task(
-        description="Create a creative image prompt (in English) for this post.",
-        expected_output="The Image Prompt text.",
+        description="""
+        1. קרא את הפוסט שהכין הכותב (task_write).
+        2. העתק את הפוסט המקורי (בעברית) כמו שהוא להודעה הסופית.
+        3. רד שורה והוסף קו מפריד (---).
+        4. כתוב מתחתיו את ה-Image Prompt באנגלית.
+        """,
+        expected_output="הפוסט המלא בעברית, ואחריו ה-Image Prompt באנגלית.",
         agent=art_director,
         context=[task_write]
+    )
     )
 
     crew = Crew(
