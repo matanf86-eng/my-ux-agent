@@ -5,41 +5,54 @@ from langchain_anthropic import ChatAnthropic
 from crewai_tools import SerperDevTool
 
 # ====================================================
-# הגדרת הכותרת והעיצוב
+# הגדרת עיצוב הדף
 # ====================================================
 st.set_page_config(page_title="UX/AI News Generator", page_icon="🎨", layout="centered")
 st.title("🎨 מחולל פוסטים + פרומפטים")
-st.markdown("המערכת יוצרת פוסט ללינקדאין וגם מכינה לך פרומפט לתמונה בחינם")
+st.markdown("המערכת יוצרת פוסט ללינקדאין וגם מכינה לך פרומפט לתמונה (השתמש במפתחות מהכספת או הזן ידנית)")
 
 # ====================================================
-# סרגל צד להגדרות
+# פונקציה חכמה לטעינת מפתחות (מהכספת או מהמשתמש)
+# ====================================================
+def load_api_key(key_name, user_input):
+    # 1. אם המשתמש הזין ידנית - קח את זה
+    if user_input and len(user_input) > 10:
+        return user_input
+    # 2. אחרת, נסה למשוך מהכספת הסודית
+    elif key_name in st.secrets:
+        return st.secrets[key_name]
+    # 3. אם אין כלום - תחזיר כלום
+    return None
+
+# ====================================================
+# סרגל צד
 # ====================================================
 with st.sidebar:
     st.header("הגדרות")
-    # שדות להזנת מפתחות
-    anthropic_key = st.text_input("Anthropic API Key", type="password", value="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")
-    serper_key = st.text_input("Serper API Key", type="password", value="ה27524dc96669fdd53f6eb3e634267f94c2d759ed")
+    
+    # שדות קלט (משאירים ריק כדי להשתמש בכספת)
+    user_anthropic = st.text_input("Anthropic API Key", type="password", help="השאר ריק כדי להשתמש במפתח השמור במערכת")
+    user_serper = st.text_input("Serper API Key", type="password", help="השאר ריק כדי להשתמש במפתח השמור במערכת")
     
     st.markdown("---")
     topic = st.text_input("נושא למחקר", "AI Agents in UX Design")
     language = st.selectbox("שפת הפוסט", ["Hebrew", "English"])
 
 # ====================================================
-# פונקציית המנוע
+# המנוע
 # ====================================================
-def run_crew():
-    # 1. הזנת מפתחות
+def run_crew(anthropic_key, serper_key):
+    # הזנת המפתחות למערכת ההפעלה
     os.environ["ANTHROPIC_API_KEY"] = anthropic_key
     os.environ["SERPER_API_KEY"] = serper_key
 
-    # 2. הגדרת המודל (Haiku - מהיר וזול)
-    # אם שילמת ל-Anthropic, אפשר לשנות ל- sonnet או opus
+    # הגדרת המודל
     llm = ChatAnthropic(model="claude-3-haiku-20240307", temperature=0.7)
     
-    # 3. כלים
+    # כלים
     search_tool = SerperDevTool()
 
-    # --- סוכן 1: חוקר ---
+    # סוכנים
     researcher = Agent(
         role='Senior UX/AI Researcher',
         goal=f'Find the latest news about {topic}',
@@ -49,7 +62,6 @@ def run_crew():
         verbose=True
     )
 
-    # --- סוכן 2: כותב ---
     writer = Agent(
         role='Content Creator',
         goal=f'Write engaging LinkedIn posts in {language}',
@@ -58,16 +70,15 @@ def run_crew():
         verbose=True
     )
 
-    # --- סוכן 3: ארט דירקטור (ללא כלי ציור, רק מוח) ---
     art_director = Agent(
         role='Creative Art Director',
-        goal='Create detailed image prompts for Generative AI',
-        backstory="You are an expert in Prompt Engineering. You know how to describe abstract tech concepts for tools like Midjourney, DALL-E, and Gemini.",
+        goal='Create detailed image prompts',
+        backstory="You are an expert in Prompt Engineering.",
         llm=llm,
         verbose=True
     )
 
-    # 4. משימות
+    # משימות
     task_research = Task(
         description=f"Find 1 interesting news item from the last 7 days regarding '{topic}'.",
         expected_output="A summary of the news item with source link.",
@@ -81,21 +92,13 @@ def run_crew():
         context=[task_research]
     )
 
-    # המשימה החדשה: רק לכתוב את הפרומפט, לא לייצר תמונה
     task_prompt = Task(
-        description="""
-        1. Read the LinkedIn post created by the writer.
-        2. Create a creative, high-quality image prompt (in English) that visualizes this topic.
-        3. The style should be: "Modern, flat vector art, isometric style, tech colors (blue, purple, white)".
-        4. FINAL OUTPUT FORMAT:
-           Please output the LinkedIn Post FIRST, then add a separator line, and then the Image Prompt.
-        """,
-        expected_output="The LinkedIn Post followed by the Image Prompt.",
+        description="Create a creative image prompt (in English) for this post.",
+        expected_output="The Image Prompt text.",
         agent=art_director,
         context=[task_write]
     )
 
-    # 5. הרצה
     crew = Crew(
         agents=[researcher, writer, art_director],
         tasks=[task_research, task_write, task_prompt],
@@ -105,21 +108,22 @@ def run_crew():
     return crew.kickoff()
 
 # ====================================================
-# ממשק המשתמש
+# כפתור ההפעלה
 # ====================================================
 if st.button("🚀 צור פוסט + פרומפט"):
-    if "sk-" not in anthropic_key: # בדיקה פשוטה
-        st.error("נא להזין מפתחות API תקינים בסרגל הצד")
+    # 1. ניסיון לטעון מפתחות
+    final_anthropic = load_api_key("ANTHROPIC_API_KEY", user_anthropic)
+    final_serper = load_api_key("SERPER_API_KEY", user_serper)
+
+    # 2. בדיקה שיש לנו הכל
+    if not final_anthropic or not final_serper:
+        st.error("⚠️ לא נמצאו מפתחות! נא להזין בסרגל הצד או להגדיר ב-Secrets.")
     else:
-        with st.spinner('הצוות עובד: חוקר -> כותב -> מנסח פרומפט לתמונה...'):
+        with st.spinner('הצוות עובד... (זה לוקח דקה)'):
             try:
-                result = run_crew()
+                result = run_crew(final_anthropic, final_serper)
                 st.success("התהליך הסתיים!")
-                
-                # הצגת התוצאה
-                st.markdown("### 📝 הפוסט והפרומפט שלך:")
+                st.markdown("### 📝 תוצאה:")
                 st.markdown(result)
-                
-                st.info("💡 טיפ: העתק את הטקסט באנגלית (הפרומפט) והדבק אותו בצ'אט של Gemini כדי לקבל תמונה.")
             except Exception as e:
                 st.error(f"שגיאה: {e}")
