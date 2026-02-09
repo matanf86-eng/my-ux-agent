@@ -83,7 +83,6 @@ def run_crew(anthropic_key, serper_key):
         context=[task_research]
     )
 
-    # התיקון נמצא כאן: הנחיה מפורשת להעתיק את הפוסט המקורי
     task_prompt = Task(
         description="""
         1. Read the post created by the writer task (task_write).
@@ -93,19 +92,4 @@ def run_crew(anthropic_key, serper_key):
         """,
         expected_output="The original LinkedIn Post followed by the Image Prompt.",
         agent=art_director,
-        context=[task_write]
-    )
-
-    crew = Crew(
-        agents=[researcher, writer, art_director],
-        tasks=[task_research, task_write, task_prompt],
-        process=Process.sequential
-    )
-    
-    return crew.kickoff()
-
-# ====================================================
-# כפתור ההפעלה
-# ====================================================
-if st.button("🚀 צור פוסט + פרומפט"):
-    final_anthropic = load_api_key("ANTHROPIC_API_KEY
+        context=
