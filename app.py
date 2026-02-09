@@ -92,4 +92,32 @@ def run_crew(anthropic_key, serper_key):
         """,
         expected_output="The original LinkedIn Post followed by the Image Prompt.",
         agent=art_director,
-        context=
+        context=[task_write]
+    )
+
+    crew = Crew(
+        agents=[researcher, writer, art_director],
+        tasks=[task_research, task_write, task_prompt],
+        process=Process.sequential
+    )
+    
+    return crew.kickoff()
+
+# ====================================================
+# כפתור ההפעלה
+# ====================================================
+if st.button("🚀 צור פוסט + פרומפט"):
+    final_anthropic = load_api_key("ANTHROPIC_API_KEY", user_anthropic)
+    final_serper = load_api_key("SERPER_API_KEY", user_serper)
+
+    if not final_anthropic or not final_serper:
+        st.error("⚠️ לא נמצאו מפתחות! נא להזין בסרגל הצד או להגדיר ב-Secrets.")
+    else:
+        with st.spinner('הצוות עובד... (זה לוקח דקה)'):
+            try:
+                result = run_crew(final_anthropic, final_serper)
+                st.success("התהליך הסתיים!")
+                st.markdown("### 📝 תוצאה:")
+                st.markdown(result)
+            except Exception as e:
+                st.error(f"שגיאה: {e}")
